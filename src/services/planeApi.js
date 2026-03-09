@@ -168,6 +168,7 @@ class PlaneService {
     this.statesCache = null;
     this.labelsCache = null;
     this.projectCache = null;
+    this.membersCache = null;
 
     logger.debug("PlaneService instance created", {
       workspace: workspaceSlug,
@@ -241,6 +242,47 @@ class PlaneService {
       return this.labelsCache;
     } catch (error) {
       logger.error("Error fetching labels", error);
+      return {};
+    }
+  }
+
+  async getProjectMembers() {
+    if (this.membersCache) {
+      logger.debug("Returning members from cache");
+      return this.membersCache;
+    }
+
+    try {
+      logger.debug("Fetching project members from API");
+      const response = await planeApi.get(
+        `/workspaces/${this.workspaceSlug}/projects/${this.projectId}/members/`,
+      );
+      if (
+        !response.data ||
+        (!Array.isArray(response.data.results) && !Array.isArray(response.data))
+      ) {
+        logger.error("Invalid members response", { response: response.data });
+        return [];
+      }
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results;
+      this.membersCache = data.reduce((acc, current) => {
+        acc[current.member.id] = {
+          id: current.member.id,
+          name:
+            current.member.display_name ||
+            current.member.first_name ||
+            current.member.email,
+        };
+        return acc;
+      }, {});
+      logger.debug("Members cached successfully", {
+        count: Object.keys(this.membersCache).length,
+      });
+      return this.membersCache;
+    } catch (error) {
+      logger.error("Error fetching members", error);
       return {};
     }
   }
@@ -354,16 +396,42 @@ class PlaneService {
     }
   }
 
-  async createIssue(title, description, priority) {
+  async createIssue(
+    title,
+    description,
+    priority,
+    stateId = null,
+    labelIds = null,
+    assigneeIds = null,
+    startDate = null,
+    targetDate = null,
+  ) {
     try {
-      logger.info("Creating new issue", { title, priority });
+      logger.info("Creating new issue", {
+        title,
+        priority,
+        stateId,
+        labelIds,
+        assigneeIds,
+        startDate,
+        targetDate,
+      });
+
+      const payload = {
+        name: title,
+        description_html: `<p class="editor-paragraph-block">${description}</p>`,
+        priority,
+      };
+
+      if (stateId) payload.state_id = stateId;
+      if (labelIds) payload.label_ids = labelIds;
+      if (assigneeIds) payload.assignee_ids = assigneeIds;
+      if (startDate) payload.start_date = startDate;
+      if (targetDate) payload.target_date = targetDate;
+
       const response = await planeApi.post(
         `/workspaces/${this.workspaceSlug}/projects/${this.projectId}/issues/`,
-        {
-          name: title,
-          description_html: `<p class="editor-paragraph-block">${description}</p>`,
-          priority,
-        }
+        payload,
       );
       logger.info("Issue created successfully", {
         issueId: response.data.id,
