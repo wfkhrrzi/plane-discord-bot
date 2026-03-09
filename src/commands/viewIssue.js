@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const planeService = require("../services/planeApi");
 const logger = require("../utils/logger");
+const config = require("../config/config");
 const {
   getPriorityEmoji,
   formatState,
@@ -11,8 +11,9 @@ const {
   formatLabels,
 } = require("../utils/utils");
 
-const formatAttachments = (attachments) => {
-  if (!attachments || attachments.length === 0) return { text: "No attachments" };
+const formatAttachments = (attachments, planeService) => {
+  if (!attachments || attachments.length === 0)
+    return { text: "No attachments" };
 
   const otherAttachments = [];
 
@@ -21,7 +22,7 @@ const formatAttachments = (attachments) => {
     const size = planeService.formatFileSize(attachment.attributes.size);
     otherAttachments.push({
       name: attachment.attributes.name,
-      url: `https://api.plane.so/api/assets/v2/workspaces/${planeService.config.WORKSPACE_SLUG}/projects/${planeService.config.PROJECT_ID}/issues/${attachment.issue}/attachments/${attachment.id}`,
+      url: `https://${config.API_DOMAIN}/api/assets/v2/workspaces/${planeService.config.WORKSPACE_SLUG}/projects/${planeService.config.PROJECT_ID}/issues/${attachment.issue}/attachments/${attachment.id}`,
       size: size,
       icon: icon,
     });
@@ -43,7 +44,11 @@ const formatAttachments = (attachments) => {
     );
 
     if (remainingCount > 0) {
-      parts.push(`\n📎 +${remainingCount} more attachment${remainingCount === 1 ? '' : 's'}`);
+      parts.push(
+        `\n📎 +${remainingCount} more attachment${
+          remainingCount === 1 ? "" : "s"
+        }`
+      );
     }
   }
 
@@ -74,7 +79,22 @@ module.exports = {
         .setRequired(true)
     ),
 
-  async execute(interaction) {
+  async execute(interaction, { planeService, channelConfig }) {
+    // Check if channel is configured
+    if (!planeService || !channelConfig) {
+      const notConfiguredEmbed = new EmbedBuilder()
+        .setTitle("⚠️ Channel Not Configured")
+        .setDescription(
+          "This channel is not configured for Plane.\n" +
+            "An administrator must use `/plane-setup` to configure this channel first."
+        )
+        .setColor(0xfbbf24)
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [notConfiguredEmbed], ephemeral: true });
+      return;
+    }
+
     await interaction.deferReply();
 
     try {
@@ -83,7 +103,9 @@ module.exports = {
       logger.info("View issue command initiated", {
         user: interaction.user.tag,
         guild: interaction.guild?.name,
-        issueId: sequenceId
+        workspace: channelConfig.workspaceSlug,
+        project: channelConfig.projectId,
+        issueId: sequenceId,
       });
 
       // Show progress
@@ -91,10 +113,12 @@ module.exports = {
         embeds: [
           new EmbedBuilder()
             .setTitle("⏳ Fetching Issue...")
-            .setDescription("Please wait while the issue details are being fetched.")
+            .setDescription(
+              "Please wait while the issue details are being fetched."
+            )
             .setColor(0xfbbf24)
-            .setTimestamp()
-        ]
+            .setTimestamp(),
+        ],
       });
 
       const issue = await planeService.getIssueBySequenceId(sequenceId);
@@ -102,7 +126,7 @@ module.exports = {
       logger.debug("Issue fetched successfully", {
         issueId: issue.id,
         hasAttachments: issue.attachments?.length > 0,
-        hasLabels: issue.label_details?.length > 0
+        hasLabels: issue.label_details?.length > 0,
       });
 
       const issueUrl = getIssueUrl(
@@ -128,7 +152,9 @@ module.exports = {
       mainEmbed.addFields({
         name: "Status",
         value: [
-          `**Priority:** ${getPriorityEmoji(issue.priority)} ${issue.priority?.toUpperCase() || "None"}`,
+          `**Priority:** ${getPriorityEmoji(issue.priority)} ${
+            issue.priority?.toUpperCase() || "None"
+          }`,
           `**State:** ${formatState(
             issue.state_detail?.name,
             issue.state_detail?.group
@@ -142,10 +168,10 @@ module.exports = {
       // Handle attachments
       if (issue.attachments?.length > 0) {
         logger.debug("Processing attachments", {
-          count: issue.attachments.length
+          count: issue.attachments.length,
         });
 
-        const { text } = formatAttachments(issue.attachments);
+        const { text } = formatAttachments(issue.attachments, planeService);
         logger.info("Attachments processed", { text });
         // Add non-image attachments as field
         if (text !== "No attachments") {
@@ -167,7 +193,7 @@ module.exports = {
       // Add label embeds if present
       if (issue.label_details?.length > 0) {
         logger.debug("Processing labels", {
-          count: issue.label_details.length
+          count: issue.label_details.length,
         });
 
         const labelFields = formatLabels(issue.label_details);
@@ -189,7 +215,7 @@ module.exports = {
 
       logger.info("Issue details displayed successfully", {
         issueId: issue.id,
-        embedCount: embeds.length
+        embedCount: embeds.length,
       });
 
       await interaction.editReply({ embeds });
@@ -198,7 +224,10 @@ module.exports = {
 
       const errorEmbed = new EmbedBuilder()
         .setTitle("❌ Failed to View Issue")
-        .setDescription(error.message || "An unexpected error occurred while fetching the issue.")
+        .setDescription(
+          error.message ||
+            "An unexpected error occurred while fetching the issue."
+        )
         .setColor(0xdc2626)
         .setTimestamp();
 
