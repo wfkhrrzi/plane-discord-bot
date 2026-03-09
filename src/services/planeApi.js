@@ -137,7 +137,7 @@ const MIME_TYPES = {
  */
 
 const planeApi = axios.create({
-  baseURL: "https://api.plane.so/api/v1",
+  baseURL: `https://${config.API_DOMAIN}/api/v1`,
   headers: {
     "X-API-Key": config.PLANE_API_KEY,
     "Content-Type": "application/json",
@@ -547,7 +547,7 @@ class PlaneService {
         // Create a direct axios request to match curl command
         uploadCredentialsResponse = await axios({
           method: "post",
-          url: `https://api.plane.so/api/v1/workspaces/${this.workspaceSlug}/projects/${this.projectId}/issues/${issueId}/issue-attachments/`,
+          url: `https://${config.API_DOMAIN}/api/v1/workspaces/${this.workspaceSlug}/projects/${this.projectId}/issues/${issueId}/issue-attachments/`,
           headers: {
             "Content-Type": "application/json",
             "x-api-key": config.PLANE_API_KEY,
@@ -620,7 +620,7 @@ class PlaneService {
       try {
         const completeResponse = await axios({
           method: "patch",
-          url: `https://api.plane.so/api/v1/workspaces/${this.workspaceSlug}/projects/${this.projectId}/issues/${issueId}/issue-attachments/${asset_id}`,
+          url: `https://${config.API_DOMAIN}/api/v1/workspaces/${this.workspaceSlug}/projects/${this.projectId}/issues/${issueId}/issue-attachments/${asset_id}`,
           headers: {
             "Content-Type": "application/json",
             "x-api-key": config.PLANE_API_KEY,

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const logger = require("../utils/logger");
+const config = require("../config/config");
 const {
   getPriorityEmoji,
   formatState,
@@ -21,7 +22,7 @@ const formatAttachments = (attachments, planeService) => {
     const size = planeService.formatFileSize(attachment.attributes.size);
     otherAttachments.push({
       name: attachment.attributes.name,
-      url: `https://api.plane.so/api/assets/v2/workspaces/${planeService.config.WORKSPACE_SLUG}/projects/${planeService.config.PROJECT_ID}/issues/${attachment.issue}/attachments/${attachment.id}`,
+      url: `https://${config.API_DOMAIN}/api/assets/v2/workspaces/${planeService.config.WORKSPACE_SLUG}/projects/${planeService.config.PROJECT_ID}/issues/${attachment.issue}/attachments/${attachment.id}`,
       size: size,
       icon: icon,
     });

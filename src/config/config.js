@@ -19,4 +19,6 @@ module.exports = {
   // Logging
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
   ENABLE_FILE_LOGS: process.env.ENABLE_FILE_LOGS || "false",
+
+  API_DOMAIN: process.env.API_DOMAIN || "api.plane.so",
 };
