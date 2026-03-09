@@ -119,6 +119,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
+createStorage().then(() => logger.info("Storage initialized successfully."))
+
 client.login(config.DISCORD_TOKEN).catch(error => {
   logger.error("Failed to login to Discord", error);
   process.exit(1);
