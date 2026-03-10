@@ -11,9 +11,11 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("plane-setup")
     .setDescription(
-      "Configure this channel to use a specific Plane workspace and project"
+      "Configure this channel to use a specific Plane workspace and project",
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(
+      PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageWebhooks,
+    )
     .setDMPermission(false)
     .addStringOption((option) =>
       option
