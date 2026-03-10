@@ -428,9 +428,9 @@ class PlaneService {
         priority,
       };
 
-      if (stateId) payload.state_id = stateId;
-      if (labelIds) payload.label_ids = labelIds;
-      if (assigneeIds) payload.assignee_ids = assigneeIds;
+      if (stateId) payload.state = stateId;
+      if (labelIds) payload.labels = labelIds;
+      if (assigneeIds) payload.assignees = assigneeIds;
       if (startDate) payload.start_date = startDate;
       if (targetDate) payload.target_date = targetDate;
 

@@ -173,16 +173,50 @@ module.exports = {
       const title = interaction.options.getString("title");
       const description = interaction.options.getString("description") || "";
       const priority = interaction.options.getString("priority") || "none";
-      const state = interaction.options.getString("state");
-      const label = interaction.options.getString("labels");
-      const assignee = interaction.options.getString("assignees");
+      let stateId = interaction.options.getString("state");
+      let labelId = interaction.options.getString("labels");
+      let assigneeId = interaction.options.getString("assignees");
       const start_date = interaction.options.getString("start_date");
       const target_date = interaction.options.getString("target_date");
 
-      logger.debug("Issue creation parameters", {
+      // Fetch all to attempt resolving name to UUID if user typed directly
+      const [allStates, allLabels, allMembers] = await Promise.all([
+        planeService.getStates(),
+        planeService.getLabels(),
+        planeService.getProjectMembers(),
+      ]);
+
+      // Resolve state
+      if (stateId && !allStates[stateId]) {
+        const found = Object.entries(allStates).find(
+          ([, s]) => s.name.toLowerCase() === stateId.toLowerCase(),
+        );
+        if (found) stateId = found[0];
+      }
+
+      // Resolve label
+      if (labelId && !allLabels[labelId]) {
+        const found = Object.entries(allLabels).find(
+          ([, l]) => l.name.toLowerCase() === labelId.toLowerCase(),
+        );
+        if (found) labelId = found[0];
+      }
+
+      // Resolve assignee
+      if (assigneeId && !allMembers[assigneeId]) {
+        const found = Object.entries(allMembers).find(
+          ([, m]) =>
+            (m.name || m.id).toLowerCase() === assigneeId.toLowerCase(),
+        );
+        if (found) assigneeId = found[0];
+      }
+
+      logger.debug("Issue creation parameters resolved", {
         title,
-        description: description ? "Provided" : "Not provided",
         priority,
+        stateId,
+        labelId,
+        assigneeId,
       });
 
       // Show progress
@@ -200,9 +234,9 @@ module.exports = {
         title,
         description,
         priority !== "none" ? priority : "none",
-        state,
-        label ? [label] : null,
-        assignee ? [assignee] : null,
+        stateId,
+        labelId ? [labelId] : null,
+        assigneeId ? [assigneeId] : null,
         start_date,
         target_date,
       );
@@ -213,12 +247,6 @@ module.exports = {
       });
 
       const latestIssue = await planeService.getIssueById(issue.id);
-
-      const [allStates, allLabels, allMembers] = await Promise.all([
-        planeService.getStates(),
-        planeService.getLabels(),
-        planeService.getProjectMembers(),
-      ]);
 
       const issueUrl = getIssueUrl(
         planeService.config.WORKSPACE_SLUG,
@@ -242,10 +270,10 @@ module.exports = {
       }
 
       let assigneeDisplay = "None";
-      if (assignee) {
-        assigneeDisplay = allMembers[assignee]
-          ? allMembers[assignee].name
-          : assignee;
+      if (assigneeId) {
+        assigneeDisplay = allMembers[assigneeId]
+          ? allMembers[assigneeId].name
+          : assigneeId;
       } else if (issue.assignee_ids && issue.assignee_ids.length > 0) {
         // Fallback or API automatically assigned someone
         const firstAssignee = issue.assignee_ids[0];
