@@ -360,40 +360,56 @@ class PlaneService {
         this.getProjectDetails(),
       ]);
 
+      const apiFilters = { ...filters };
       const queryParams = new URLSearchParams({
-        per_page: "10", // Maximum allowed
-        ...filters,
+        per_page: "100", // Fetch up to 100 recent issues so we can filter them in-memory
       });
-      // Add filters if provided
-      if (filters.state)
-        queryParams.append("state__name__icontains", filters.state);
-      if (filters.priority) queryParams.append("priority", filters.priority);
 
       // Add sorting
       queryParams.append("order_by", "-created_at"); // Sort by creation date, newest first
 
       const response = await planeApi.get(
-        `/workspaces/${this.workspaceSlug}/projects/${this.projectId}/issues/?${queryParams.toString()}`
+        `/workspaces/${this.workspaceSlug}/projects/${this.projectId}/issues/?${queryParams.toString()}`,
       );
 
       if (!response.data || !Array.isArray(response.data.results)) {
         logger.warn("No issues found or invalid response", {
           response: response.data,
         });
-        return [];
+        return { results: [], count: 0 };
       }
 
-      const enhancedResults = response.data.results.map((issue) => ({
+      let enhancedResults = response.data.results.map((issue) => ({
         ...this.formatIssueData(issue, states, labels, project),
         formatted_id: `${project.identifier}-${issue.sequence_id}`,
       }));
 
+      // Perform in-memory filtering because Plane's REST endpoint disregards multiple common query parameters in Open Source v1
+      if (apiFilters.state) {
+        const targetGroup = apiFilters.state.toLowerCase();
+        enhancedResults = enhancedResults.filter(
+          (i) => i.state_detail?.group?.toLowerCase() === targetGroup,
+        );
+      }
+
+      if (apiFilters.priority) {
+        const targetPri = apiFilters.priority.toLowerCase();
+        enhancedResults = enhancedResults.filter(
+          (i) => (i.priority || "none").toLowerCase() === targetPri,
+        );
+      }
+
       logger.info("Issues fetched successfully", {
         count: enhancedResults.length,
       });
+
+      // Limit results to 10 for discord embed limits
+      const finalResults = enhancedResults.slice(0, 10);
+
       return {
         ...response.data,
-        results: enhancedResults,
+        results: finalResults,
+        count: enhancedResults.length,
       };
     } catch (error) {
       logger.error("Error fetching all issues", error);
