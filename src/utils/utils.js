@@ -1,3 +1,5 @@
+const config = require("../config/config");
+
 const getPriorityColor = (priority) => {
   const colors = {
     urgent: 0xdc2626, // Bright Red
@@ -59,7 +61,7 @@ const formatDescription = (description) => {
 };
 
 const getIssueUrl = (workspaceSlug, projectId, issueId) => {
-  return `https://app.plane.so/${workspaceSlug}/projects/${projectId}/issues/${issueId}`;
+  return `https://${config.API_DOMAIN}/${workspaceSlug}/projects/${projectId}/issues/${issueId}`;
 };
 
 const formatLabels = (labels) => {
