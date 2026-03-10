@@ -10,6 +10,7 @@ services:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - CLIENT_ID=${CLIENT_ID}
       - PLANE_API_KEY=${PLANE_API_KEY}
+      - API_DOMAIN=${API_DOMAIN}
       # Optional
       - STORAGE_TYPE=${STORAGE_TYPE:-json}
       - LOG_LEVEL=${LOG_LEVEL:-info}
