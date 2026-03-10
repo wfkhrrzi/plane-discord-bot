@@ -113,6 +113,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
           });
         }
       }
+    } else if (interaction.isAutocomplete()) {
+      const command = client.commands.get(interaction.commandName);
+
+      if (!command || !command.autocomplete) return;
+
+      try {
+        const guildId = interaction.guildId;
+        const channelId = interaction.channelId;
+
+        // Build execution context
+        let context = {
+          planeService: null,
+          channelConfig: null,
+        };
+
+        // Skip config lookup for admin commands
+        if (!ADMIN_COMMANDS.includes(interaction.commandName)) {
+          const channelConfig = await channelConfigManager.getConfig(
+            guildId,
+            channelId,
+          );
+
+          if (channelConfig) {
+            const planeService = planeServiceManager.getService(
+              channelConfig.workspaceSlug,
+              channelConfig.projectId,
+            );
+            context = { planeService, channelConfig };
+          }
+        }
+
+        await command.autocomplete(interaction, context);
+      } catch (error) {
+        logger.error(
+          `Error executing autocomplete for ${interaction.commandName}`,
+          error,
+        );
+      }
     }
   } catch (error) {
     logger.error("Error in interaction handler", error);

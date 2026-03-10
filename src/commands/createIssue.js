@@ -38,166 +38,111 @@ function getColorEmoji(hex) {
 }
 
 module.exports = {
-  data: (async () => {
-    const commandBuilder = new SlashCommandBuilder()
-      .setName("create-issue")
-      .setDescription("Create a new issue")
-      .addStringOption((option) =>
-        option.setName("title").setDescription("Issue title").setRequired(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName("description")
-          .setDescription("Issue description")
-          .setRequired(false),
-      )
-      .addStringOption((option) =>
-        option
-          .setName("priority")
-          .setDescription("Issue priority")
-          .setRequired(false)
-          .addChoices(
-            { name: "Urgent", value: "urgent" },
-            { name: "High", value: "high" },
-            { name: "Medium", value: "medium" },
-            { name: "Low", value: "low" },
-          ),
-      );
+  data: new SlashCommandBuilder()
+    .setName("create-issue")
+    .setDescription("Create a new issue")
+    .addStringOption((option) =>
+      option.setName("title").setDescription("Issue title").setRequired(true),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("description")
+        .setDescription("Issue description")
+        .setRequired(false),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("priority")
+        .setDescription("Issue priority")
+        .setRequired(false)
+        .addChoices(
+          { name: "Urgent", value: "urgent" },
+          { name: "High", value: "high" },
+          { name: "Medium", value: "medium" },
+          { name: "Low", value: "low" },
+        ),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("state")
+        .setDescription("Issue state name or ID")
+        .setRequired(false)
+        .setAutocomplete(true),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("labels")
+        .setDescription("Issue label name or ID")
+        .setRequired(false)
+        .setAutocomplete(true),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("assignees")
+        .setDescription("Assignee name or ID")
+        .setRequired(false)
+        .setAutocomplete(true),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("start_date")
+        .setDescription("Start date (YYYY-MM-DD)")
+        .setRequired(false),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("target_date")
+        .setDescription("Target date (YYYY-MM-DD)")
+        .setRequired(false),
+    ),
 
-    try {
-      if (config.WORKSPACE_SLUG && config.PROJECT_ID && config.PLANE_API_KEY) {
-        const globalPlaneService = new PlaneService(
-          config.WORKSPACE_SLUG,
-          config.PROJECT_ID,
-        );
-
-        const [states, labels, members] = await Promise.all([
-          globalPlaneService.getStates(),
-          globalPlaneService.getLabels(),
-          globalPlaneService.getProjectMembers(),
-        ]);
-
-        const stateChoices = Object.values(states || {})
-          .slice(0, 25)
-          .map((s) => ({ name: s.name.substring(0, 100), value: s.id }));
-        const labelChoices = Object.values(labels || {})
-          .slice(0, 25)
-          .map((l) => ({ name: l.name.substring(0, 100), value: l.id }));
-        const memberChoices = Object.values(members || {})
-          .slice(0, 25)
-          .map((m) => ({
-            name: (m.name || m.id).substring(0, 100),
-            value: m.id,
-          }));
-
-        if (stateChoices.length > 0) {
-          commandBuilder.addStringOption((option) =>
-            option
-              .setName("state")
-              .setDescription("Issue state")
-              .setRequired(false)
-              .addChoices(...stateChoices),
-          );
-        } else {
-          commandBuilder.addStringOption((option) =>
-            option
-              .setName("state")
-              .setDescription("Issue state ID")
-              .setRequired(false),
-          );
-        }
-
-        if (labelChoices.length > 0) {
-          commandBuilder.addStringOption((option) =>
-            option
-              .setName("labels")
-              .setDescription("Issue label")
-              .setRequired(false)
-              .addChoices(...labelChoices),
-          );
-        } else {
-          commandBuilder.addStringOption((option) =>
-            option
-              .setName("labels")
-              .setDescription("Issue label ID")
-              .setRequired(false),
-          );
-        }
-
-        if (memberChoices.length > 0) {
-          commandBuilder.addStringOption((option) =>
-            option
-              .setName("assignees")
-              .setDescription("Assignee")
-              .setRequired(false)
-              .addChoices(...memberChoices),
-          );
-        } else {
-          commandBuilder.addStringOption((option) =>
-            option
-              .setName("assignees")
-              .setDescription("Assignee user ID")
-              .setRequired(false),
-          );
-        }
-      } else {
-        commandBuilder.addStringOption((option) =>
-          option
-            .setName("state")
-            .setDescription("Issue state ID")
-            .setRequired(false),
-        );
-        commandBuilder.addStringOption((option) =>
-          option
-            .setName("labels")
-            .setDescription("Issue label ID")
-            .setRequired(false),
-        );
-        commandBuilder.addStringOption((option) =>
-          option
-            .setName("assignees")
-            .setDescription("Assignee user ID")
-            .setRequired(false),
-        );
-      }
-    } catch (e) {
-      logger.error("Failed to fetch choices dynamically", e);
-      commandBuilder.addStringOption((option) =>
-        option
-          .setName("state")
-          .setDescription("Issue state ID")
-          .setRequired(false),
-      );
-      commandBuilder.addStringOption((option) =>
-        option
-          .setName("labels")
-          .setDescription("Issue label ID")
-          .setRequired(false),
-      );
-      commandBuilder.addStringOption((option) =>
-        option
-          .setName("assignees")
-          .setDescription("Assignee user ID")
-          .setRequired(false),
-      );
+  async autocomplete(interaction, { planeService }) {
+    if (!planeService) {
+      await interaction.respond([]);
+      return;
     }
 
-    commandBuilder
-      .addStringOption((option) =>
-        option
-          .setName("start_date")
-          .setDescription("Start date (YYYY-MM-DD)")
-          .setRequired(false),
-      )
-      .addStringOption((option) =>
-        option
-          .setName("target_date")
-          .setDescription("Target date (YYYY-MM-DD)")
-          .setRequired(false),
-      );
+    try {
+      const focusedOption = interaction.options.getFocused(true);
+      let choices = [];
 
-    return commandBuilder;
-  })(),
+      if (focusedOption.name === "state") {
+        const states = await planeService.getStates();
+        choices = Object.entries(states || {}).map(([id, s]) => ({
+          name: s.name,
+          value: id,
+        }));
+      } else if (focusedOption.name === "labels") {
+        const labels = await planeService.getLabels();
+        choices = Object.entries(labels || {}).map(([id, l]) => ({
+          name: l.name,
+          value: id,
+        }));
+      } else if (focusedOption.name === "assignees") {
+        const members = await planeService.getProjectMembers();
+        choices = Object.entries(members || {}).map(([id, m]) => ({
+          name: m.name || id,
+          value: id,
+        }));
+      }
+
+      const filtered = choices
+        .filter((choice) =>
+          choice.name.toLowerCase().includes(focusedOption.value.toLowerCase()),
+        )
+        .slice(0, 25);
+
+      await interaction.respond(
+        filtered.map((choice) => ({
+          name: choice.name.substring(0, 100),
+          value: choice.value,
+        })),
+      );
+    } catch (e) {
+      logger.error("Error during autocomplete", e);
+      await interaction.respond([]);
+    }
+  },
 
   async execute(interaction, { planeService, channelConfig }) {
     // Check if channel is configured

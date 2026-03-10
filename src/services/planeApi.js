@@ -268,12 +268,17 @@ class PlaneService {
         ? response.data
         : response.data.results;
       this.membersCache = data.reduce((acc, current) => {
-        acc[current.member.id] = {
-          id: current.member.id,
+        const memberData = current.member || current;
+        if (!memberData || !memberData.id) return acc;
+
+        acc[memberData.id] = {
+          id: memberData.id,
           name:
-            current.member.display_name ||
-            current.member.first_name ||
-            current.member.email,
+            memberData.display_name ||
+            memberData.first_name ||
+            memberData.email ||
+            memberData.id ||
+            "Unknown User",
         };
         return acc;
       }, {});
