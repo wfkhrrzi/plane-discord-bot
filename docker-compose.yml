@@ -17,6 +17,8 @@ services:
       - ENABLE_FILE_LOGS=${ENABLE_FILE_LOGS:-false}
     volumes:
       - plane-bot-data:/usr/src/app/data
+    ports:
+      - 6969:6969
     healthcheck:
       test: ["CMD", "node", "-e", "console.log('healthy')"]
       interval: 30s

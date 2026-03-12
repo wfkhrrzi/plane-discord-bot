@@ -64,7 +64,7 @@ function startWebhookServer(client) {
   });
 
   // THIS WAS MISSING
-  const PORT = process.env.WEBHOOK_PORT || 3000;
+  const PORT = 6969
   app.listen(PORT, () => {
     console.log(`Plane webhook listener running on port ${PORT}`);
   });

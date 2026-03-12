@@ -46,5 +46,7 @@ VOLUME ["/usr/src/app/data"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD node -e "console.log('healthy')" || exit 1
 
+EXPOSE 6969
+
 # Start the bot
 CMD [ "npm", "start" ]
