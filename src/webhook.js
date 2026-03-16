@@ -38,23 +38,20 @@ function startWebhookServer(client) {
       const state = issue.state?.name || "Unknown";
       const priority = issue.priority || "None";
 
-      // Assignees
-      const assignees =
-        issue.assignees && issue.assignees.length > 0
-          ? issue.assignees.map((a) => a.display_name).join(", ")
-          : "Unassigned";
+      const { buildIssueEmbeds } = require("./utils/embedBuilder");
+      const { getIssueUrl } = require("./utils/utils");
 
-      const message = `
-**Plane Issue ${action.toUpperCase()}**
-• **Title:** ${title}
-• **ID:** ${sequenceId}
-• **Status:** ${state}
-• **Priority:** ${priority}
-• **Assigned to:** ${assignees}
-• **Action by:** ${actor}
-`;
+      const issueUrl = (process.env.WORKSPACE_SLUG && process.env.PROJECT_ID) 
+        ? getIssueUrl(process.env.WORKSPACE_SLUG, process.env.PROJECT_ID, issue.id) 
+        : null;
 
-      await channel.send(message);
+      const embeds = buildIssueEmbeds(issue, issueUrl, null, {
+        isWebhook: true,
+        action: action,
+        actor: actor
+      });
+
+      await channel.send({ embeds });
 
       return res.status(200).send("OK");
     } catch (error) {
