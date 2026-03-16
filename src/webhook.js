@@ -45,9 +45,30 @@ function startWebhookServer(client) {
 
       // Issue details
       const title = issue.name || "Unknown title";
-      const sequenceId = issue.sequence_id
+      
+      let workspaceSlug = null;
+      for (const channelData of Object.values(channelsConfig)) {
+        if (channelData.projectId === webhookProjectId && channelData.workspaceSlug) {
+          workspaceSlug = channelData.workspaceSlug;
+          break;
+        }
+      }
+
+      let sequenceId = issue.sequence_id
         ? `${process.env.PROJECT_KEY || "ISSUE"}-${issue.sequence_id}`
         : "N/A";
+
+      if (workspaceSlug && webhookProjectId && issue.sequence_id) {
+        try {
+          const planeServiceManager = require("./services/PlaneServiceManager");
+          const planeService = planeServiceManager.getService(workspaceSlug, webhookProjectId);
+          sequenceId = await planeService.formatIssueId(issue.sequence_id);
+          issue.formatted_id = sequenceId; // Set formatted_id so embedBuilder uses it directly
+        } catch (err) {
+          console.error("Failed to format issue ID from Plane API:", err);
+        }
+      }
+
       const state = issue.state?.name || "Unknown";
       const priority = issue.priority || "None";
 
