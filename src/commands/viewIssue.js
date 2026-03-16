@@ -74,6 +74,28 @@ module.exports = {
         issue.id
       );
 
+      // Resolve assignee IDs to names
+      try {
+        const allMembers = await planeService.getProjectMembers();
+        const assigneeArray =
+          issue.assignee_details || issue.assignees || issue.assignee_ids || [];
+
+        if (Array.isArray(assigneeArray) && assigneeArray.length > 0) {
+          issue.assignee_details = assigneeArray.map((assignee) => {
+            if (typeof assignee === "object" && assignee !== null) {
+              return assignee;
+            }
+            const id = String(assignee);
+            if (allMembers[id]) {
+              return { display_name: allMembers[id].name || id };
+            }
+            return assignee;
+          });
+        }
+      } catch (err) {
+        logger.warn("Failed to resolve assignees", err);
+      }
+
       const embeds = buildIssueEmbeds(issue, issueUrl, planeService);
 
       logger.info("Issue details displayed successfully", {
