@@ -16,8 +16,10 @@ const formatAttachments = (attachments, planeService) => {
 
   if (!planeService) {
     // Basic formatting without planeService
-    const parts = attachments.map(a => `📎 [${a.attributes?.name || a.name || 'Attachment'}]`);
-    return { text: parts.join('\n') || "Attachments present" };
+    const parts = attachments.map(
+      (a) => `📎 [${a.attributes?.name || a.name || "Attachment"}]`,
+    );
+    return { text: parts.join("\n") || "Attachments present" };
   }
 
   const otherAttachments = [];
@@ -39,15 +41,17 @@ const formatAttachments = (attachments, planeService) => {
 
     parts.push(
       displayAttachments
-        .map((file) => `${file.icon} [${file.name}](${file.url}) (${file.size})`)
-        .join("\n")
+        .map(
+          (file) => `${file.icon} [${file.name}](${file.url}) (${file.size})`,
+        )
+        .join("\n"),
     );
 
     if (remainingCount > 0) {
       parts.push(
         `\n📎 +${remainingCount} more attachment${
           remainingCount === 1 ? "" : "s"
-        }`
+        }`,
       );
     }
   }
@@ -68,14 +72,19 @@ const formatMetadata = (issue) => {
   return parts.join(" • ");
 };
 
-const buildIssueEmbeds = (issue, issueUrl, planeService = null, options = {}) => {
+const buildIssueEmbeds = (
+  issue,
+  issueUrl,
+  planeService = null,
+  options = {},
+) => {
   const { isWebhook = false, action = null, actor = null } = options;
 
   let formattedId = issue.formatted_id;
   if (!formattedId && issue.sequence_id) {
     formattedId = `${process.env.PROJECT_KEY || "ISSUE"}-${issue.sequence_id}`;
   }
-  
+
   const idPrefix = formattedId ? `${formattedId} ` : "";
   const baseTitle = `${idPrefix}${issue.name || "Untitled Issue"}`;
   const title = isWebhook ? `[WEBHOOK] ${baseTitle}` : baseTitle;
@@ -92,12 +101,11 @@ const buildIssueEmbeds = (issue, issueUrl, planeService = null, options = {}) =>
 
   let description = "";
   if (isWebhook && action) {
-    description += `**Action:** ${action.toUpperCase()}${actor ? ` by ${actor}` : ''}\n\n`;
+    description += `**Action:** ${action.toUpperCase()}${actor ? ` by ${actor}` : ""}\n\n`;
   }
-  if (issue.description) {
-    description += formatDescription(issue.description);
-  }
-  
+
+  description += formatDescription(issue.description_stripped);
+
   if (description) {
     mainEmbed.setDescription(description);
   }
@@ -105,9 +113,15 @@ const buildIssueEmbeds = (issue, issueUrl, planeService = null, options = {}) =>
   const resolveAssignees = () => {
     let arr = issue.assignee_details || issue.assignees || [];
     if (!Array.isArray(arr)) return "Unassigned";
-    const mapped = arr.map(a => typeof a === 'object' ? (a.display_name || a.first_name || a.username) : a).filter(Boolean);
+    const mapped = arr
+      .map((a) =>
+        typeof a === "object"
+          ? a.display_name || a.first_name || a.username
+          : a,
+      )
+      .filter(Boolean);
     return mapped.length > 0 ? mapped.join(", ") : "Unassigned";
-  }
+  };
 
   const assigneesStr = resolveAssignees();
   const stateName = issue.state_detail?.name || issue.state?.name || "Unknown";
@@ -120,7 +134,7 @@ const buildIssueEmbeds = (issue, issueUrl, planeService = null, options = {}) =>
         issue.priority?.toUpperCase() || "None"
       }`,
       `**State:** ${formatState(stateName, stateGroup)}`,
-      `**Assigned to:** ${assigneesStr}`
+      `**Assigned to:** ${assigneesStr}`,
     ].join("\n"),
     inline: false,
   });
@@ -133,7 +147,9 @@ const buildIssueEmbeds = (issue, issueUrl, planeService = null, options = {}) =>
     });
 
     const { text } = formatAttachments(issue.attachments, planeService);
-    logger.info("Attachments processed", { text: text === "No attachments" ? text : "yes" });
+    logger.info("Attachments processed", {
+      text: text === "No attachments" ? text : "yes",
+    });
     if (text !== "No attachments") {
       mainEmbed.addFields({
         name: "📁 Attachments",
