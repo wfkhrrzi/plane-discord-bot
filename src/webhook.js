@@ -1,4 +1,8 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const { buildIssueEmbeds } = require("./utils/embedBuilder");
+const { getIssueUrl } = require("./utils/utils");
 
 function startWebhookServer(client) {
   const app = express();
@@ -17,17 +21,26 @@ function startWebhookServer(client) {
       console.log(JSON.stringify(req.body, null, 2));
 
       const event = req.body?.event || "unknown.event";
-
-      const channelId = process.env.NOTIFY_CHANNEL_ID;
-      if (!channelId) {
-        console.error("NOTIFY_CHANNEL_ID not set");
+      const issue = req.body.data || {};
+      
+      const webhookProjectId = issue.project;
+      if (!webhookProjectId) {
+        console.error("Webhook payload missing project ID");
         return res.status(200).send("OK");
       }
 
-      const channel = await client.channels.fetch(channelId);
+      let channelsConfig = {};
+      try {
+        const channelsPath = path.join(__dirname, "../data/channels.json");
+        if (fs.existsSync(channelsPath)) {
+          channelsConfig = JSON.parse(fs.readFileSync(channelsPath, "utf8"));
+        }
+      } catch (err) {
+        console.error("Error reading channels.json:", err);
+      }
+
       const eventType = req.body.event;
       const action = req.body.action;
-      const issue = req.body.data || {};
       const actor = req.body.activity?.actor?.display_name || "Someone";
 
       // Issue details
@@ -38,20 +51,31 @@ function startWebhookServer(client) {
       const state = issue.state?.name || "Unknown";
       const priority = issue.priority || "None";
 
-      const { buildIssueEmbeds } = require("./utils/embedBuilder");
-      const { getIssueUrl } = require("./utils/utils");
+      for (const [key, channelData] of Object.entries(channelsConfig)) {
+        if (channelData.projectId === webhookProjectId) {
+          const [guildId, channelId] = key.split(":");
+          try {
+            const channel = await client.channels.fetch(channelId);
+            const issueUrl = channelData.workspaceSlug && channelData.projectId
+              ? getIssueUrl(
+                  channelData.workspaceSlug,
+                  channelData.projectId,
+                  issue.id,
+                )
+              : null;
 
-      const issueUrl = (process.env.WORKSPACE_SLUG && process.env.PROJECT_ID) 
-        ? getIssueUrl(process.env.WORKSPACE_SLUG, process.env.PROJECT_ID, issue.id) 
-        : null;
+            const embeds = buildIssueEmbeds(issue, issueUrl, null, {
+              isWebhook: true,
+              action: action,
+              actor: actor,
+            });
 
-      const embeds = buildIssueEmbeds(issue, issueUrl, null, {
-        isWebhook: true,
-        action: action,
-        actor: actor
-      });
-
-      await channel.send({ embeds });
+            await channel.send({ embeds });
+          } catch (err) {
+            console.error(`Failed to send webhook to channel ${channelId}:`, err);
+          }
+        }
+      }
 
       return res.status(200).send("OK");
     } catch (error) {
